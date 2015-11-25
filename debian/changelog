@@ -1,0 +1,5 @@
+python-gnocchiclient (2.0.0-1) unstable; urgency=medium
+
+  * Initial release. (Closes: #806211)
+
+ -- Thomas Goirand <zigo@debian.org>  Wed, 25 Nov 2015 13:30:54 +0100
