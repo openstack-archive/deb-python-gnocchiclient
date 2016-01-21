@@ -1,3 +1,9 @@
+python-gnocchiclient (2.1.0-1) experimental; urgency=medium
+
+  * New upstream release.
+
+ -- Thomas Goirand <zigo@debian.org>  Thu, 21 Jan 2016 16:42:41 +0000
+
 python-gnocchiclient (2.0.0-1) unstable; urgency=medium
 
   * Initial release. (Closes: #806211)
