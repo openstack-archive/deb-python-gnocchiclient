@@ -20,6 +20,8 @@ override_dh_auto_install:
 			--root $(CURDIR)/debian/python3-gnocchiclient; \
 	done
 	rm -rf $(CURDIR)/debian/python*-gnocchiclient/usr/lib/python*/dist-packages/*.pth
+	mv $(CURDIR)/debian/python-gnocchiclient/usr/bin/gnocchi $(CURDIR)/debian/python-gnocchiclient/usr/bin/python2-gnocchi
+	mv $(CURDIR)/debian/python3-gnocchiclient/usr/bin/gnocchi $(CURDIR)/debian/python3-gnocchiclient/usr/bin/python3-gnocchi
 
 override_dh_auto_test:
 ifeq (,$(findstring nocheck, $(DEB_BUILD_OPTIONS)))

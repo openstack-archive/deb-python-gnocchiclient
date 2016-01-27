@@ -1,0 +1,11 @@
+#!/bin/sh
+
+set -e
+
+if [ "$1" = "remove" ] ; then
+	update-alternatives --remove gnocchi /usr/bin/python2-gnocchi
+fi
+
+#DEBHELPER#
+
+exit 0
