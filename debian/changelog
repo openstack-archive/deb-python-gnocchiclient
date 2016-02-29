@@ -1,6 +1,11 @@
 python-gnocchiclient (2.1.0-2) UNRELEASED; urgency=medium
 
+  [ Ondřej Nový ]
   * Fixed VCS URLs (https).
+
+  [ James Page ]
+  * d/control: Drop python-gnocchi from BD's, only required for
+    functional tests.
 
  -- Ondřej Nový <novy@ondrej.org>  Sun, 28 Feb 2016 15:38:31 +0100
 
