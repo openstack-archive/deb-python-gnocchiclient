@@ -22,6 +22,7 @@ class CliResourceList(lister.Lister):
 
     COLS = ('id', 'type',
             'project_id', 'user_id',
+            'original_resource_id',
             'started_at', 'ended_at',
             'revision_start', 'revision_end')
 
@@ -87,7 +88,7 @@ class CliResourceSearch(CliResourceList):
 
     def get_parser(self, prog_name):
         parser = super(CliResourceSearch, self).get_parser(prog_name)
-        parser.add_argument("--query", help="Query"),
+        parser.add_argument("query", help="Query")
         return parser
 
     def take_action(self, parsed_args):
@@ -140,11 +141,8 @@ class CliResourceCreate(show.ShowOne):
                             default=[],
                             help="name:id of a metric to add"),
         parser.add_argument(
-            "-n", "--create-metric", action='append',
+            "-n", "--create-metric", action='append', default=[],
             help="name:archive_policy_name of a metric to create"),
-        parser.add_argument("-d", "--delete-metric", action='append',
-                            default=[],
-                            help="Name of a metric to delete"),
         return parser
 
     def _resource_from_args(self, parsed_args, update=False):
@@ -157,19 +155,19 @@ class CliResourceCreate(show.ShowOne):
                 resource[attr] = value
         if (parsed_args.add_metric
            or parsed_args.create_metric
-           or parsed_args.delete_metric):
+           or (update and parsed_args.delete_metric)):
             if update:
                 r = self.app.client.resource.get(parsed_args.resource_type,
                                                  parsed_args.resource_id)
                 default = r['metrics']
+                for metric_name in parsed_args.delete_metric:
+                    default.pop(metric_name, None)
             else:
                 default = {}
             resource['metrics'] = default
             for metric in parsed_args.add_metric:
                 name, _, value = metric.partition(":")
                 resource['metrics'][name] = value
-            for metric in parsed_args.delete_metric:
-                resource['metrics'].pop(name, None)
             for metric in parsed_args.create_metric:
                 name, _, value = metric.partition(":")
                 if value is "":
@@ -189,6 +187,13 @@ class CliResourceCreate(show.ShowOne):
 
 class CliResourceUpdate(CliResourceCreate):
     """Update a resource"""
+
+    def get_parser(self, prog_name):
+        parser = super(CliResourceUpdate, self).get_parser(prog_name)
+        parser.add_argument("-d", "--delete-metric", action='append',
+                            default=[],
+                            help="Name of a metric to delete"),
+        return parser
 
     def take_action(self, parsed_args):
         resource = self._resource_from_args(parsed_args, update=True)
@@ -211,3 +216,14 @@ class CliResourceDelete(command.Command):
 
     def take_action(self, parsed_args):
         self.app.client.resource.delete(parsed_args.resource_id)
+
+
+class CliResourceTypeList(lister.Lister):
+    """List the resource types that gnocchi supports"""
+
+    COLS = ('resource_type',
+            'resource_controller_url')
+
+    def take_action(self, parsed_args):
+        resources = self.app.client.resource.list_types()
+        return self.COLS, list(resources.items())

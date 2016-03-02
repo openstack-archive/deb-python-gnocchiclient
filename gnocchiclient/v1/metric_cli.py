@@ -11,6 +11,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import json
+import sys
+
 from cliff import command
 from cliff import lister
 from cliff import show
@@ -54,6 +57,7 @@ class CliMetricShow(CliMetricWithResourceID, show.ShowOne):
             resource_id=parsed_args.resource_id)
         utils.format_archive_policy(metric["archive_policy"])
         utils.format_move_dict_to_root(metric, "archive_policy")
+        utils.format_resource_for_metric(metric)
         return self.dict2columns(metric)
 
 
@@ -88,6 +92,7 @@ class CliMetricCreate(CliMetricCreateBase):
         metric = self.app.client.metric.create(metric)
         utils.format_archive_policy(metric["archive_policy"])
         utils.format_move_dict_to_root(metric, "archive_policy")
+        utils.format_resource_for_metric(metric)
         return self.dict2columns(metric)
 
 
@@ -121,6 +126,8 @@ class CliMeasuresShow(CliMetricWithResourceID, lister.Lister):
                             help="beginning of the period")
         parser.add_argument("--stop",
                             help="end of the period")
+        parser.add_argument("--granularity",
+                            help="granularity to retrieve (in seconds)")
         return parser
 
     def take_action(self, parsed_args):
@@ -130,6 +137,7 @@ class CliMeasuresShow(CliMetricWithResourceID, lister.Lister):
             aggregation=parsed_args.aggregation,
             start=parsed_args.start,
             stop=parsed_args.stop,
+            granularity=parsed_args.granularity,
         )
         return self.COLS, measures
 
@@ -162,6 +170,35 @@ class CliMeasuresAdd(CliMeasuresAddBase):
             resource_id=parsed_args.resource_id,
             measures=parsed_args.measure,
         )
+
+
+class CliMeasuresBatch(command.Command):
+    def stdin_or_file(self, value):
+        if value == "-":
+            return sys.stdin
+        else:
+            return open(value, 'r')
+
+    def get_parser(self, prog_name):
+        parser = super(CliMeasuresBatch, self).get_parser(prog_name)
+        parser.add_argument("file", type=self.stdin_or_file,
+                            help=("File containing measurements to batch or "
+                                  "- for stdin (see Gnocchi REST API docs for "
+                                  "the format"))
+        return parser
+
+
+class CliMetricsMeasuresBatch(CliMeasuresBatch):
+    def take_action(self, parsed_args):
+        with parsed_args.file as f:
+            self.app.client.metric.batch_metrics_measures(json.load(f))
+
+
+class CliResourcesMetricsMeasuresBatch(CliMeasuresBatch):
+    def take_action(self, parsed_args):
+        with parsed_args.file as f:
+            self.app.client.metric.batch_resources_metrics_measures(
+                json.load(f))
 
 
 class CliMeasuresAggregation(lister.Lister):

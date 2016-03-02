@@ -21,51 +21,13 @@ ROOT = os.path.abspath(os.path.join(BASE_DIR, "..", ".."))
 sys.path.insert(0, ROOT)
 sys.path.insert(0, BASE_DIR)
 
-
-def gen_ref(ver, title, names):
-    refdir = os.path.join(BASE_DIR, "ref")
-    pkg = "gnocchiclient"
-    if ver:
-        pkg = "%s.%s" % (pkg, ver)
-        refdir = os.path.join(refdir, ver)
-    if not os.path.exists(refdir):
-        os.makedirs(refdir)
-    idxpath = os.path.join(refdir, "index.rst")
-    with open(idxpath, "w") as idx:
-        idx.write(("%(title)s\n"
-                   "%(signs)s\n"
-                   "\n"
-                   ".. toctree::\n"
-                   "   :maxdepth: 1\n"
-                   "\n") % {"title": title, "signs": "=" * len(title)})
-        for name in names:
-            idx.write("   %s\n" % name)
-            rstpath = os.path.join(refdir, "%s.rst" % name)
-            with open(rstpath, "w") as rst:
-                rst.write(("%(title)s\n"
-                           "%(signs)s\n"
-                           "\n"
-                           ".. automodule:: %(pkg)s.%(name)s\n"
-                           "   :members:\n"
-                           "   :undoc-members:\n"
-                           "   :show-inheritance:\n"
-                           "   :noindex:\n")
-                          % {"title": " ".join([n.capitalize()
-                                                for n in name.split("_")]),
-                             "signs": "=" * len(name),
-                             "pkg": pkg, "name": name})
-
-gen_ref("v1", "Version 1 API", ["client", "resource", "archive_policy",
-                                "archive_policy_rule", "metric"])
-
 # -- General configuration ----------------------------------------------------
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = [
     'sphinx.ext.autodoc',
-    #'sphinx.ext.intersphinx',
-    'oslosphinx'
+    #'sphinx.ext.intersphinx'
 ]
 
 # autodoc generation is a bit aggressive and a nuisance when doing heavy
@@ -99,6 +61,15 @@ pygments_style = 'sphinx'
 # html_theme_path = ["."]
 # html_theme = '_theme'
 # html_static_path = ['static']
+html_theme = os.getenv("SPHINX_HTML_THEME", 'openstack')
+
+if html_theme == "sphinx_rtd_theme":
+    import sphinx_rtd_theme
+    html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
+else:
+    import oslosphinx
+    html_theme_path = [os.path.join(os.path.dirname(oslosphinx.__file__),
+                                    'theme')]
 
 # Output file base name for HTML help builder.
 htmlhelp_basename = '%sdoc' % project

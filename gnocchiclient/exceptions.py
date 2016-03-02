@@ -114,7 +114,7 @@ class Conflict(ClientException):
     message = "Conflict"
 
 
-class NamedMetricAreadyExists(Conflict, MutipleMeaningException):
+class NamedMetricAlreadyExists(Conflict, MutipleMeaningException):
     message = "Named metric already exists"
     match = re.compile("Named metric .* does not exist")
 
@@ -131,7 +131,7 @@ class ArchivePolicyAlreadyExists(Conflict, MutipleMeaningException):
 
 class ArchivePolicyRuleAlreadyExists(Conflict, MutipleMeaningException):
     message = "Archive policy rule already exists"
-    match = re.compile("Archive policy Rule .* already exists")
+    match = re.compile("Archive policy rule .* already exists")
 
 
 class OverLimit(RetryAfterException):
@@ -165,9 +165,9 @@ _error_classes = [BadRequest, Unauthorized, Forbidden, NotFound,
                   MethodNotAllowed, NotAcceptable, Conflict, OverLimit,
                   RateLimit, NotImplemented]
 _error_classes_enhanced = {
-    NotFound: [MetricNotFound, ResourceNotFound, ArchivePolicyNotFound,
-               ArchivePolicyRuleNotFound],
-    Conflict: [NamedMetricAreadyExists, ResourceAlreadyExists,
+    NotFound: [MetricNotFound, ResourceNotFound, ArchivePolicyRuleNotFound,
+               ArchivePolicyNotFound],
+    Conflict: [NamedMetricAlreadyExists, ResourceAlreadyExists,
                ArchivePolicyAlreadyExists,
                ArchivePolicyRuleAlreadyExists]
 }
@@ -176,14 +176,14 @@ _code_map = dict(
     for c in _error_classes)
 
 
-def from_response(response, url, method=None):
+def from_response(response, method=None):
     """Return an instance of one of the ClientException on an requests response.
 
     Usage::
 
         resp, body = requests.request(...)
         if resp.status_code != 200:
-            raise exception_from_response(resp)
+            raise from_response(resp)
     """
 
     if response.status_code:
@@ -196,7 +196,7 @@ def from_response(response, url, method=None):
     kwargs = {
         'code': response.status_code,
         'method': method,
-        'url': url,
+        'url': response.url,
         'request_id': req_id,
     }
 
@@ -209,12 +209,21 @@ def from_response(response, url, method=None):
         except ValueError:
             pass
         else:
-            desc = body.get('description')
-            for enhanced_cls in enhanced_classes:
-                if enhanced_cls.match.match(desc):
-                    cls = enhanced_cls
-                    break
-            kwargs['message'] = desc
+            if 'description' in body:
+                # Gnocchi json
+                desc = body.get('description')
+                if desc:
+                    for enhanced_cls in enhanced_classes:
+                        if enhanced_cls.match.match(desc):
+                            cls = enhanced_cls
+                            break
+                kwargs['message'] = desc
+            elif isinstance(body, dict) and isinstance(body.get("error"),
+                                                       dict):
+                # Keystone json
+                kwargs['message'] = body["error"]["message"]
+            else:
+                kwargs['message'] = response.text
     elif content_type.startswith("text/"):
         kwargs['message'] = response.text
 

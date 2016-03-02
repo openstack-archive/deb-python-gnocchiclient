@@ -12,8 +12,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import uuid
 
 import pyparsing as pp
+import six
+from six.moves.urllib import parse as urllib_parse
 
 uninary_operators = ("not", )
 binary_operator = (u">=", u"<=", u"!=", u">", u"<", u"=", u"==", u"eq", u"ne",
@@ -26,8 +29,9 @@ null = pp.Regex("None|none|null").setParseAction(pp.replaceWith(None))
 boolean = "False|True|false|true"
 boolean = pp.Regex(boolean).setParseAction(lambda t: t[0].lower() == "true")
 hex_string = lambda n: pp.Word(pp.hexnums, exact=n)
-uuid = pp.Combine(hex_string(8) + ("-" + hex_string(4)) * 3 +
-                  "-" + hex_string(12))
+uuid_string = pp.Combine(hex_string(8) +
+                         (pp.Optional("-") + hex_string(4)) * 3 +
+                         pp.Optional("-") + hex_string(12))
 number = r"[+-]?\d+(:?\.\d*)?(:?[eE][+-]?\d+)?"
 number = pp.Regex(number).setParseAction(lambda t: float(t[0]))
 identifier = pp.Word(pp.alphas, pp.alphanums + "_")
@@ -36,7 +40,7 @@ comparison_term = pp.Forward()
 in_list = pp.Group(pp.Suppress('[') +
                    pp.Optional(pp.delimitedList(comparison_term)) +
                    pp.Suppress(']'))("list")
-comparison_term << (null | boolean | uuid | identifier | number |
+comparison_term << (null | boolean | uuid_string | identifier | number |
                     quoted_string | in_list)
 condition = pp.Group(comparison_term + operator + comparison_term)
 
@@ -80,8 +84,17 @@ def _parsed_query2dict(parsed_query):
     return result
 
 
+class MalformedQuery(Exception):
+    def __init__(self, reason):
+        super(MalformedQuery, self).__init__(
+            "Malformed Query: %s" % reason)
+
+
 def search_query_builder(query):
-    parsed_query = expr.parseString(query)[0]
+    try:
+        parsed_query = expr.parseString(query, parseAll=True)[0]
+    except pp.ParseException as e:
+        raise MalformedQuery(six.text_type(e))
     return _parsed_query2dict(parsed_query)
 
 
@@ -112,6 +125,18 @@ def format_archive_policy(ap):
     format_string_list(ap, "aggregation_methods")
 
 
+def format_resource_for_metric(metric):
+    # NOTE(sileht): Gnocchi < 2.0
+    if 'resource' not in metric:
+        return
+
+    if not metric['resource']:
+        metric['resource/id'] = None
+        del metric['resource']
+    else:
+        format_move_dict_to_root(metric, "resource")
+
+
 def dict_from_parsed_args(parsed_args, attrs):
     d = {}
     for attr in attrs:
@@ -122,6 +147,27 @@ def dict_from_parsed_args(parsed_args, attrs):
 
 
 def dict_to_querystring(objs):
-    return "&".join(["%s=%s" % (k, v)
+    return "&".join(["%s=%s" % (k, urllib_parse.quote(six.text_type(v)))
                      for k, v in objs.items()
                      if v is not None])
+
+
+# uuid5 namespace for id transformation.
+# NOTE(chdent): This UUID must stay the same, forever, across all
+# of gnocchi to preserve its value as a URN namespace.
+RESOURCE_ID_NAMESPACE = uuid.UUID('0a7a15ff-aa13-4ac2-897c-9bdf30ce175b')
+
+
+def encode_resource_id(value):
+    try:
+        try:
+            return str(uuid.UUID(value))
+        except ValueError:
+            if len(value) <= 255:
+                if six.PY2:
+                    value = value.encode('utf-8')
+                return str(uuid.uuid5(RESOURCE_ID_NAMESPACE, value))
+            raise ValueError(
+                'transformable resource id >255 max allowed characters')
+    except Exception as e:
+        raise ValueError(e)

@@ -9,6 +9,9 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+import json
+import os
+import tempfile
 import uuid
 
 from gnocchiclient.tests.functional import base
@@ -17,7 +20,7 @@ from gnocchiclient.tests.functional import base
 class MetricClientTest(base.ClientTestBase):
     def test_delete_several_metrics(self):
         apname = str(uuid.uuid4())
-        # PREPARE AN ACHIVE POLICY
+        # PREPARE AN ARCHIVE POLICY
         self.gnocchi("archive-policy", params="create %s "
                      "--back-window 0 -d granularity:1s,points:86400" % apname)
         # Create 2 metrics
@@ -49,7 +52,7 @@ class MetricClientTest(base.ClientTestBase):
                                        metric2["id"])
 
     def test_metric_scenario(self):
-        # PREPARE AN ACHIVE POLICY
+        # PREPARE AN ARCHIVE POLICY
         self.gnocchi("archive-policy", params="create metric-test "
                      "--back-window 0 -d granularity:1s,points:86400")
 
@@ -63,7 +66,7 @@ class MetricClientTest(base.ClientTestBase):
                          metric["created_by_project_id"])
         self.assertEqual(self.clients.user_id, metric["created_by_user_id"])
         self.assertEqual('some-name', metric["name"])
-        self.assertEqual('None', metric["resource"])
+        self.assertEqual('None', metric["resource/id"])
         self.assertIn("metric-test", metric["archive_policy/name"])
 
         # CREATE WITHOUT NAME
@@ -76,7 +79,7 @@ class MetricClientTest(base.ClientTestBase):
                          metric["created_by_project_id"])
         self.assertEqual(self.clients.user_id, metric["created_by_user_id"])
         self.assertEqual('None', metric["name"])
-        self.assertEqual('None', metric["resource"])
+        self.assertEqual('None', metric["resource/id"])
         self.assertIn("metric-test", metric["archive_policy/name"])
 
         # GET
@@ -96,6 +99,7 @@ class MetricClientTest(base.ClientTestBase):
         result = self.retry_gnocchi(
             5, 'measures', params=("show %s "
                                    "--aggregation mean "
+                                   "--granularity 1 "
                                    "--start 2015-03-06T14:32:00 "
                                    "--stop 2015-03-06T14:36:00"
                                    ) % metric["id"])
@@ -122,6 +126,18 @@ class MetricClientTest(base.ClientTestBase):
                           {'granularity': '1.0',
                            'timestamp': '2015-03-06T14:34:12+00:00',
                            'value': '12.0'}], measures)
+
+        # BATCHING
+        measures = json.dumps({
+            metric['id']: [{'timestamp': '2015-03-06T14:34:12',
+                            'value': 12}]})
+        tmpfile = tempfile.NamedTemporaryFile(delete=False)
+        self.addCleanup(os.remove, tmpfile.name)
+        with tmpfile as f:
+            f.write(measures.encode('utf8'))
+        self.gnocchi('measures', params=("batch-metrics %s" % tmpfile.name))
+        self.gnocchi('measures', params=("batch-metrics -"),
+                     input=measures.encode('utf8'))
 
         # LIST
         result = self.gnocchi('metric', params="list")
@@ -167,7 +183,7 @@ class MetricClientTest(base.ClientTestBase):
                          metric["created_by_project_id"])
         self.assertEqual(self.clients.user_id, metric["created_by_user_id"])
         self.assertEqual('metric-name', metric["name"])
-        self.assertNotEqual('None', metric["resource"])
+        self.assertNotEqual('None', metric["resource/id"])
         self.assertIn("metric-test", metric["archive_policy/name"])
 
         # CREATE FAIL
@@ -209,7 +225,7 @@ class MetricClientTest(base.ClientTestBase):
 
         # MEASURES AGGREGATION
         result = self.gnocchi(
-            'measures', params=("--debug aggregation "
+            'measures', params=("aggregation "
                                 "--query \"id='metric-res'\" "
                                 "--resource-type \"generic\" "
                                 "-m metric-name "
@@ -224,6 +240,20 @@ class MetricClientTest(base.ClientTestBase):
                           {'granularity': '1.0',
                            'timestamp': '2015-03-06T14:34:12+00:00',
                            'value': '12.0'}], measures)
+
+        # BATCHING
+        measures = json.dumps({'metric-res': {'metric-name': [{
+            'timestamp': '2015-03-06T14:34:12', 'value': 12
+        }]}})
+        tmpfile = tempfile.NamedTemporaryFile(delete=False)
+        self.addCleanup(os.remove, tmpfile.name)
+        with tmpfile as f:
+            f.write(measures.encode('utf8'))
+
+        self.gnocchi('measures', params=("batch-resources-metrics %s" %
+                                         tmpfile.name))
+        self.gnocchi('measures', params=("batch-resources-metrics -"),
+                     input=measures.encode('utf8'))
 
         # LIST
         result = self.gnocchi('metric', params="list")

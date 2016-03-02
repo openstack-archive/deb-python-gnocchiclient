@@ -13,11 +13,13 @@
 import uuid
 
 from gnocchiclient.tests.functional import base
+from gnocchiclient import utils
 
 
 class ResourceClientTest(base.ClientTestBase):
     RESOURCE_ID = str(uuid.uuid4())
-    RESOURCE_ID2 = str(uuid.uuid4())
+    RAW_RESOURCE_ID2 = str(uuid.uuid4()) + "/foo"
+    RESOURCE_ID2 = utils.encode_resource_id(RAW_RESOURCE_ID2)
     PROJECT_ID = str(uuid.uuid4())
 
     def test_help(self):
@@ -36,7 +38,6 @@ class ResourceClientTest(base.ClientTestBase):
         result = self.gnocchi(
             u'resource', params=u"create %s --type generic" %
             self.RESOURCE_ID)
-        resource = self.details_multiple(result)
         resource = self.details_multiple(result)[0]
         self.assertEqual(self.RESOURCE_ID, resource["id"])
         self.assertEqual('None', resource["project_id"])
@@ -95,20 +96,30 @@ class ResourceClientTest(base.ClientTestBase):
         # Search
         result = self.gnocchi('resource',
                               params=("search --type generic "
-                                      "--query 'project_id=%s'"
+                                      "'project_id=%s'"
                                       ) % self.PROJECT_ID)
         resource_list = self.parser.listing(result)[0]
         self.assertEqual(self.RESOURCE_ID, resource_list["id"])
         self.assertEqual(self.PROJECT_ID, resource_list["project_id"])
         self.assertEqual(resource["started_at"], resource_list["started_at"])
 
+        # UPDATE with Delete metric
+        result = self.gnocchi(
+            'resource', params=("update -t generic %s -a project_id:%s "
+                                "-d temperature" %
+                                (self.RESOURCE_ID, self.PROJECT_ID)))
+        resource_updated = self.details_multiple(result)[0]
+        self.assertNotIn("temperature", resource_updated["metrics"])
+
         # CREATE 2
         result = self.gnocchi(
             'resource', params=("create %s -t generic "
                                 "-a project_id:%s"
-                                ) % (self.RESOURCE_ID2, self.PROJECT_ID))
+                                ) % (self.RAW_RESOURCE_ID2, self.PROJECT_ID))
         resource2 = self.details_multiple(result)[0]
         self.assertEqual(self.RESOURCE_ID2, resource2["id"])
+        self.assertEqual(self.RAW_RESOURCE_ID2,
+                         resource2["original_resource_id"])
         self.assertEqual(self.PROJECT_ID, resource2["project_id"])
         self.assertNotEqual('None', resource2["started_at"])
 
@@ -116,7 +127,7 @@ class ResourceClientTest(base.ClientTestBase):
         result = self.gnocchi('resource',
                               params=("search "
                                       "-t generic "
-                                      "--query 'project_id=%s' "
+                                      "'project_id=%s' "
                                       "--sort started_at:asc "
                                       "--marker %s "
                                       "--limit 1"
@@ -156,3 +167,14 @@ class ResourceClientTest(base.ClientTestBase):
         resource_ids = [r['id'] for r in self.parser.listing(result)]
         self.assertNotIn(self.RESOURCE_ID, resource_ids)
         self.assertNotIn(self.RESOURCE_ID2, resource_ids)
+
+        # LIST THE RESOUCES TYPES
+        resource_type = ('instance', 'generic', 'volume',
+                         'instance_disk', 'stack', 'identity')
+
+        result = self.gnocchi(
+            'resource', params="list-types")
+        result_list = self.parser.listing(result)
+        type_from_list = [t['resource_type'] for t in result_list]
+        for one_type in resource_type:
+            self.assertIn(one_type, type_from_list)

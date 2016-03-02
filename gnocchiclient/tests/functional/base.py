@@ -34,12 +34,12 @@ class GnocchiClient(object):
         self.project_id = str(uuid.uuid4())
 
     def gnocchi(self, action, flags='', params='',
-                fail_ok=False, merge_stderr=False):
+                fail_ok=False, merge_stderr=False, input=None):
         creds = ("--os-auth-plugin gnocchi-noauth "
                  "--user-id %s --project-id %s "
-                 "--gnocchi-endpoint %s") % (self.user_id,
-                                             self.project_id,
-                                             self.endpoint)
+                 "--endpoint %s") % (self.user_id,
+                                     self.project_id,
+                                     self.endpoint)
 
         flags = creds + ' ' + flags
 
@@ -58,10 +58,11 @@ class GnocchiClient(object):
         cmd = shlex.split(cmd)
         result = ''
         result_err = ''
+        stdin = None if input is None else subprocess.PIPE
         stdout = subprocess.PIPE
         stderr = subprocess.STDOUT if merge_stderr else subprocess.PIPE
-        proc = subprocess.Popen(cmd, stdout=stdout, stderr=stderr)
-        result, result_err = proc.communicate()
+        proc = subprocess.Popen(cmd, stdin=stdin, stdout=stdout, stderr=stderr)
+        result, result_err = proc.communicate(input=input)
         if not fail_ok and proc.returncode != 0:
             raise exceptions.CommandFailed(proc.returncode,
                                            cmd,

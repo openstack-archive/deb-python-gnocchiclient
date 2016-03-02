@@ -45,6 +45,7 @@ class GnocchiCommandManager(commandmanager.CommandManager):
         "resource create": resource_cli.CliResourceCreate,
         "resource update": resource_cli.CliResourceUpdate,
         "resource delete": resource_cli.CliResourceDelete,
+        "resource list-types": resource_cli.CliResourceTypeList,
         "archive-policy list": archive_policy_cli.CliArchivePolicyList,
         "archive-policy show": archive_policy_cli.CliArchivePolicyShow,
         "archive-policy create": archive_policy_cli.CliArchivePolicyCreate,
@@ -59,6 +60,9 @@ class GnocchiCommandManager(commandmanager.CommandManager):
         "metric delete": metric_cli.CliMetricDelete,
         "measures show": metric_cli.CliMeasuresShow,
         "measures add": metric_cli.CliMeasuresAdd,
+        "measures batch-metrics": metric_cli.CliMetricsMeasuresBatch,
+        "measures batch-resources-metrics":
+            metric_cli.CliResourcesMetricsMeasuresBatch,
         "measures aggregation": metric_cli.CliMeasuresAggregation,
         "capabilities list": capabilities_cli.CliCapabilitiesList,
         "benchmark metric create": benchmark.CliBenchmarkMetricCreate,
@@ -123,9 +127,7 @@ class GnocchiShell(app.App):
 
         if not isinstance(plugin, noauth.GnocchiNoAuthLoader):
             parser.add_argument(
-                '--gnocchi-endpoint',
-                metavar='<endpoint>',
-                dest='endpoint',
+                '--endpoint',
                 default=os.environ.get('GNOCCHI_ENDPOINT'),
                 help='Gnocchi endpoint (Env: GNOCCHI_ENDPOINT)')
 

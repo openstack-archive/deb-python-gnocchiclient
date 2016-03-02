@@ -23,6 +23,10 @@ class SearchQueryBuilderTest(base.BaseTestCase):
         self.assertEqual(expected, req)
 
     def test_search_query_builder(self):
+        self._do_test('foo=7EED6CC3-EDC8-48C9-8EF6-8A36B9ACC91C',
+                      {"=": {"foo": "7EED6CC3-EDC8-48C9-8EF6-8A36B9ACC91C"}})
+        self._do_test('foo=7EED6CC3EDC848C98EF68A36B9ACC91C',
+                      {"=": {"foo": "7EED6CC3EDC848C98EF68A36B9ACC91C"}})
         self._do_test('foo=bar', {"=": {"foo": "bar"}})
         self._do_test('foo!=1', {"!=": {"foo": 1.0}})
         self._do_test('foo=True', {"=": {"foo": True}})
@@ -81,3 +85,14 @@ class SearchQueryBuilderTest(base.BaseTestCase):
                           ]},
                           {"=": {"foo": "quote"}},
                       ]})
+
+    def test_dict_to_querystring(self):
+        expected = ["start=2016-02-10T13%3A54%3A53%2B00%3A00"
+                    "&stop=2016-02-10T13%3A56%3A42%2B02%3A00",
+                    "stop=2016-02-10T13%3A56%3A42%2B02%3A00"
+                    "&start=2016-02-10T13%3A54%3A53%2B00%3A00"]
+
+        self.assertIn(utils.dict_to_querystring(
+            {"start": "2016-02-10T13:54:53+00:00",
+             "stop": "2016-02-10T13:56:42+02:00"}),
+            expected)

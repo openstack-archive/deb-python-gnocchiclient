@@ -23,6 +23,8 @@ from gnocchiclient.v1 import base
 class MetricManager(base.Manager):
     metric_url = "v1/metric/"
     resource_url = "v1/resource/generic/%s/metric/"
+    metric_batch_url = "v1/batch/metrics/measures"
+    resources_batch_url = "v1/batch/resources/metrics/measures"
 
     def list(self):
         """List archive metrics
@@ -51,6 +53,7 @@ class MetricManager(base.Manager):
             self._ensure_metric_is_uuid(metric)
             url = self.metric_url + metric
         else:
+            resource_id = utils.encode_resource_id(resource_id)
             url = (self.resource_url % resource_id) + metric
         return self._get(url).json()
 
@@ -79,6 +82,7 @@ class MetricManager(base.Manager):
             raise TypeError("metric_name is required if resource_id is set")
 
         del metric['resource_id']
+        resource_id = utils.encode_resource_id(resource_id)
         metric = {metric_name: metric}
         metric = self._post(
             self.resource_url % resource_id,
@@ -99,6 +103,7 @@ class MetricManager(base.Manager):
             self._ensure_metric_is_uuid(metric)
             url = self.metric_url + metric
         else:
+            resource_id = utils.encode_resource_id(resource_id)
             url = self.resource_url % resource_id + metric
         self._delete(url)
 
@@ -117,13 +122,39 @@ class MetricManager(base.Manager):
             self._ensure_metric_is_uuid(metric)
             url = self.metric_url + metric + "/measures"
         else:
+            resource_id = utils.encode_resource_id(resource_id)
             url = self.resource_url % resource_id + metric + "/measures"
         return self._post(
             url, headers={'Content-Type': "application/json"},
             data=jsonutils.dumps(measures))
 
+    def batch_metrics_measures(self, measures):
+        """Add measurements to metrics
+
+        :param measures: measurements
+        :type dict(metric_id: list of dict(timestamp=timestamp, value=float))
+        """
+
+        return self._post(
+            self.metric_batch_url,
+            headers={'Content-Type': "application/json"},
+            data=jsonutils.dumps(measures))
+
+    def batch_resources_metrics_measures(self, measures):
+        """Add measurements to named metrics if resources
+
+        :param measures: measurements
+        :type dict(resource_id: dict(metric_name:
+            list of dict(timestamp=timestamp, value=float)))
+        """
+
+        return self._post(
+            self.resources_batch_url,
+            headers={'Content-Type': "application/json"},
+            data=jsonutils.dumps(measures))
+
     def get_measures(self, metric, start=None, stop=None, aggregation=None,
-                     resource_id=None, **kwargs):
+                     granularity=None, resource_id=None, **kwargs):
         """Get measurements of a metric
 
         :param metric: ID or Name of the metric
@@ -134,6 +165,8 @@ class MetricManager(base.Manager):
         :type stop: timestamp
         :param aggregation: aggregation to retrieve
         :type aggregation: str
+        :param granularity: granularity to retrieve (in seconds)
+        :type granularity: int
         :param resource_id: ID of the resource (required
                             to get a metric by name)
         :type resource_id: str
@@ -147,12 +180,14 @@ class MetricManager(base.Manager):
         if isinstance(stop, datetime.datetime):
             stop = stop.isoformat()
 
-        params = dict(start=start, stop=stop, aggregation=aggregation)
+        params = dict(start=start, stop=stop, aggregation=aggregation,
+                      granularity=granularity)
         params.update(kwargs)
         if resource_id is None:
             self._ensure_metric_is_uuid(metric)
             url = self.metric_url + metric + "/measures"
         else:
+            resource_id = utils.encode_resource_id(resource_id)
             url = self.resource_url % resource_id + metric + "/measures"
         return self._get(url, params=params).json()
 
