@@ -9,6 +9,7 @@ python-gnocchiclient (2.2.0-1) UNRELEASED; urgency=medium
 
   [ Corey Bryant ]
   * New upstream release.
+  * d/control: Align (Build-)Depends with upstream.
 
  -- Corey Bryant <corey.bryant@canonical.com>  Wed, 02 Mar 2016 09:29:39 -0500
 
