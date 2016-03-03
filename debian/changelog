@@ -1,4 +1,4 @@
-python-gnocchiclient (2.2.0-1) UNRELEASED; urgency=medium
+python-gnocchiclient (2.2.0-1) experimental; urgency=medium
 
   [ Ondřej Nový ]
   * Fixed VCS URLs (https).
@@ -11,7 +11,10 @@ python-gnocchiclient (2.2.0-1) UNRELEASED; urgency=medium
   * New upstream release.
   * d/control: Align (Build-)Depends with upstream.
 
- -- Corey Bryant <corey.bryant@canonical.com>  Wed, 02 Mar 2016 09:29:39 -0500
+  [ Thomas Goirand ]
+  * Standards-Version: 3.9.7 (no change).
+
+ -- Thomas Goirand <zigo@debian.org>  Thu, 03 Mar 2016 03:37:49 +0000
 
 python-gnocchiclient (2.1.0-1) experimental; urgency=medium
 
