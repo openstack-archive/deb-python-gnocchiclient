@@ -1,9 +1,16 @@
-python-gnocchiclient (2.2.0-3) UNRELEASED; urgency=medium
+python-gnocchiclient (2.2.0-3) unstable; urgency=medium
 
+  [ Ondřej Nový ]
   * Standards-Version is 3.9.8 now (no change)
   * d/rules: Removed UPSTREAM_GIT with default value
 
- -- Ondřej Nový <novy@ondrej.org>  Sat, 09 Apr 2016 19:27:08 +0200
+  [ Thomas Goirand ]
+  * Added python-openstackdocstheme as build-depends.
+  * Using OpenStack's Gerrit as VCS URLs.
+  * Define SPHINX_HTML_THEME=sphinx_rtd_theme and build-depend on
+    python-sphinx-rtd-theme, as otherwise sphinx-build crashes.
+
+ -- Thomas Goirand <zigo@debian.org>  Wed, 14 Sep 2016 17:52:18 +0200
 
 python-gnocchiclient (2.2.0-2) unstable; urgency=medium
 
