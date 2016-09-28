@@ -1,7 +1,12 @@
 python-gnocchiclient (2.2.0-4) UNRELEASED; urgency=medium
 
+  [ Ondřej Nový ]
   * d/s/options: extend-diff-ignore of .gitreview
   * d/control: Use correct branch in Vcs-* fields
+
+  [ Thomas Goirand ]
+  * Fixed oslotest EPOCH.
+  * Switch to openstack docs theme when generating doc.
 
  -- Ondřej Nový <onovy@debian.org>  Mon, 26 Sep 2016 19:10:05 +0200
 

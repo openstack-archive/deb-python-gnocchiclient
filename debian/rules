@@ -41,7 +41,7 @@ endif
 
 override_dh_sphinxdoc:
 ifeq (,$(findstring nodocs, $(DEB_BUILD_OPTIONS)))
-	SPHINX_HTML_THEME=sphinx_rtd_theme sphinx-build -b html doc/source debian/python-gnocchiclient-doc/usr/share/doc/python-gnocchiclient-doc/html
+	SPHINX_HTML_THEME=openstack sphinx-build -b html doc/source debian/python-gnocchiclient-doc/usr/share/doc/python-gnocchiclient-doc/html
 	dh_sphinxdoc -O--buildsystem=python_distutils
 endif
 
